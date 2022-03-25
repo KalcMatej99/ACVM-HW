@@ -8,7 +8,7 @@ from ex1_utils import gausssmooth
 
 def generate_responses_1():
     responses = np.zeros((100, 100), dtype=np.float32)
-    #responses[70, 50] = 1
+    responses[70, 50] = 1
     responses[50, 60] = 0.5
     return gausssmooth(responses, 10)
 
