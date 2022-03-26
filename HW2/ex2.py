@@ -1,3 +1,4 @@
+import enum
 import numpy as np
 from sklearn.preprocessing import scale
 from ex2_utils import get_patch, generate_responses_1, Tracker, create_epanechnik_kernel, extract_histogram, backproject_histogram
@@ -37,9 +38,9 @@ class MeanShiftTracker(Tracker):
     def __init__(self, params):
         self.eps = 1e-5
         self.nbins = 16
-        self.stop_criterion = 0.1
+        self.stop_criterion = 0.5
         self.N = 20
-        self.alfa = 0.1
+        self.alfa = 0
 
     def initialize(self, image, region):
 
@@ -87,6 +88,32 @@ class MeanShiftTracker(Tracker):
         self.prev_hist = hist
 
     def track(self, image):
+        print("NEWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW")
+
+        bestSim = 999999999
+
+        for i, scalePercent in enumerate([0.9, 1, 1.1]):
+            #for j, scalePercent2 in enumerate([0.9, 1, 1.1]):
+            pos, region, newHist, hist = self.trackScaled(image, [scalePercent, scalePercent])
+
+            sim = np.sum(np.square(self.prev_hist - hist))
+
+            if sim < bestSim:
+                bestPos = pos
+                bestI = i
+                bestHist = newHist
+                bestRegion = region
+                bestSim = sim
+
+        print(bestI)
+        self.prev_hist = bestHist
+        self.position = [bestPos[0], bestPos[1]]
+        self.size = [bestPos[2], bestPos[3]]
+        print(self.originalWidth, self.originalHeight)
+        print(bestRegion)
+        return bestRegion
+
+    def trackScaled(self, image, targetScale):
 
         newX = int(image.shape[1] * self.scaleX)
         newY = int(image.shape[0] * self.scaleY)
@@ -95,26 +122,49 @@ class MeanShiftTracker(Tracker):
         image = cv2.resize(image, dsize=(newX, newY))
         
         
-        w = self.size[0]
-        h = self.size[1]
+        w = np.minimum(int(self.size[0] * targetScale[0]), image.shape[1] - 2)
+        h = np.minimum(int(self.size[1] * targetScale[1]), image.shape[0] - 2)
+        if w % 2 == 0:
+            w -= 1
+        if h % 2 == 0:
+            h -= 1
+
+        print(w, h)
 
         X, Y = np.meshgrid(np.linspace(-int(w/2), int(w/2), int(w)), np.linspace(-int(h/2), int(h/2), int(h)))
 
-        x = self.position[0]
-        y = self.position[1]
+        x = int(self.position[0])
+        y = int(self.position[1])
+
+        if round(x + w/2) >= image.shape[1] - 1:
+            x = int(image.shape[1] - w/2 - 1)
+        if round(x - w/2) <= 0:
+            x = int(w/2+1)
+        if round(y + h/2) >= image.shape[0] - 1:
+            print("mu")
+            y = int(image.shape[0] - h/2 - 1)
+        if round(y - h/2) <= 0:
+            y = int(h/2+1)
+
+        print(x, y)
 
         for i in range(self.N):
+            print(i)
 
 
             left = max(round(x - float(w) / 2), 0)
             top = max(round(y - float(h) / 2), 0)
 
-            right = min(round(x + float(w) / 2), image.shape[1] - 1)
-            bottom = min(round(y + float(h) / 2), image.shape[0] - 1)
+            right = min(left + w, image.shape[1] - 1)
+            bottom = min(top + h, image.shape[0] - 1)
+
+            print(top, left, bottom, right, top + h, image.shape[0])
 
             image_region = image[int(top):int(bottom), int(left):int(right)]
             
-            #self.kernel = create_epanechnik_kernel(image_region.shape[1], image_region.shape[0], 1)
+            print(image_region.shape)
+            self.kernel = create_epanechnik_kernel(image_region.shape[1], image_region.shape[0], 1)
+            print(image_region.shape, self.kernel.shape)
             hist = extract_histogram(image_region, self.nbins, self.kernel)
             hist = np.divide(hist, np.sum(hist))
 
@@ -129,21 +179,19 @@ class MeanShiftTracker(Tracker):
             x += diff_x
             y += diff_y
 
-            if round(x + self.size[0]/2) > image.shape[1] - 1:
-                x = image.shape[1] - self.size[0]/2 - 1
-            if round(x - self.size[0]/2) <= 0:
-                x = self.size[0]/2+1
-            if round(y + self.size[1]/2) > image.shape[0] - 1:
-                y = image.shape[0] - self.size[1]/2 - 1
-            if round(y - self.size[1]/2) <= 0:
-                y = self.size[1]/2+1
+            if round(x + w/2) > image.shape[1] - 1:
+                x = image.shape[1] - w/2 - 1
+            if round(x - w/2) <= 0:
+                x = w/2+1
+            if round(y + h/2) > image.shape[0] - 1:
+                y = image.shape[0] - h/2 - 1
+            if round(y - h/2) <= 0:
+                y = h/2+1
 
             if np.sqrt(diff_x ** 2 + diff_y ** 2) <= self.stop_criterion:
                 break
 
-        self.prev_hist = (1 - self.alfa) * self.prev_hist + self.alfa * hist
-        self.position = [x, y]
-        return [round((x - self.size[0]/2) / self.scaleX), round((y - self.size[1]/2)/self.scaleY), self.originalWidth, self.originalHeight]
+        return [x, y, w, h], [round((x - w/2) / self.scaleX), round((y - h/2)/self.scaleY), int(w/self.scaleX), int(h/self.scaleY)], (1 - self.alfa) * self.prev_hist + self.alfa * hist, hist
 
 class MSParams():
     def __init__(self):

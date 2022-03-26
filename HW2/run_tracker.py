@@ -8,12 +8,12 @@ from ex2 import MeanShiftTracker, MSParams
 
 
 # set the path to directory where you have the sequences
-dataset_path = 'data/vot2014' # TODO: set to the dataet path on your disk
-sequence = 'ball'  # choose the sequence you want to test
+dataset_path = 'data/marty' # TODO: set to the dataet path on your disk
+sequence = 'luca'  # choose the sequence you want to test
 
 # visualization and setup parameters
 win_name = 'Tracking window'
-reinitialize = True
+reinitialize = False
 show_gt = False
 video_delay = 15
 font = cv2.FONT_HERSHEY_PLAIN
