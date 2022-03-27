@@ -1,14 +1,9 @@
-import enum
 import numpy as np
-from sklearn.preprocessing import scale
-from ex2_utils import get_patch, generate_responses_1, Tracker, create_epanechnik_kernel, extract_histogram, backproject_histogram
+from ex2_utils import get_patch, generate_responses_1, Tracker, create_epanechnik_kernel, extract_histogram, backproject_histogram, generate_responses_2
 import cv2
 import os
 
-def mean_shift_mode_seek(I, N, stop_criterion = 0.001, size_X = 5, size_Y = 5):
-
-    number_of_rows = len(I)
-    number_of_columns = len(I[0])
+def mean_shift_mode_seek(I, N, stop_criterion = 0.001, size_X = 5, size_Y = 5, startX = 2, startY = 2):
 
     ranX = range(-int(size_X/2 - 0.5), int(size_X/2 + 0.5))
     ranY = range(-int(size_Y/2 - 0.5), int(size_Y/2 + 0.5))
@@ -16,31 +11,37 @@ def mean_shift_mode_seek(I, N, stop_criterion = 0.001, size_X = 5, size_Y = 5):
     Y = [[c for c in ranY] for r in ranX]
     X = [[r for c in ranY] for r in ranX]
 
-    x_k = number_of_columns/2
-    y_k = number_of_rows/2
+    x_k = startX
+    y_k = startY
     
+
     for i in range(N):
-        print(i)
+        n_iters = i + 1
         w_i = get_patch(I, [round(y_k), round(x_k)], [size_X, size_Y])[0]
+        
+        if np.sum(w_i) == 0:
+            break
         x_k_new = (np.sum(np.multiply(X, w_i)))/(np.sum(w_i))
         y_k_new = (np.sum(np.multiply(Y, w_i)))/(np.sum(w_i))
+        
         
         x_k += x_k_new
         y_k += y_k_new
         
         if np.abs(x_k_new) < stop_criterion and np.abs(y_k_new) < stop_criterion:
-            return round(x_k), round(y_k)
+            break
 
-    return round(x_k), round(y_k)
+    return [round(x_k), round(y_k)], n_iters
 
 
 class MeanShiftTracker(Tracker):
     def __init__(self, params):
-        self.eps = 1e-5
-        self.nbins = 16
-        self.stop_criterion = 0.5
-        self.N = 20
-        self.alfa = 0
+        self.eps = params.eps
+        self.nbins = params.nbins
+        self.stop_criterion = params.stop_criterion
+        self.N = params.N
+        self.alfa = params.alfa
+        self.sigma = params.sigma
 
     def initialize(self, image, region):
 
@@ -78,7 +79,7 @@ class MeanShiftTracker(Tracker):
         self.position = (region[0] + region[2] / 2, region[1] + region[3] / 2)
         self.size = (region[2], region[3])
 
-        self.kernel = create_epanechnik_kernel(self.size[0], self.size[1], 1)
+        self.kernel = create_epanechnik_kernel(self.size[0], self.size[1], self.sigma)
 
         kernel_image = image[int(top):int(bottom), int(left):int(right)]
         
@@ -88,29 +89,26 @@ class MeanShiftTracker(Tracker):
         self.prev_hist = hist
 
     def track(self, image):
-        print("NEWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW")
 
         bestSim = 999999999
-
-        for i, scalePercent in enumerate([0.9, 1, 1.1]):
-            #for j, scalePercent2 in enumerate([0.9, 1, 1.1]):
+        scales = [0.90, 1, 1.1]
+        scales = [1]
+        for i, scalePercent in enumerate(scales):
             pos, region, newHist, hist = self.trackScaled(image, [scalePercent, scalePercent])
 
             sim = np.sum(np.square(self.prev_hist - hist))
 
+
             if sim < bestSim:
                 bestPos = pos
-                bestI = i
                 bestHist = newHist
                 bestRegion = region
                 bestSim = sim
 
-        print(bestI)
+        
         self.prev_hist = bestHist
         self.position = [bestPos[0], bestPos[1]]
         self.size = [bestPos[2], bestPos[3]]
-        print(self.originalWidth, self.originalHeight)
-        print(bestRegion)
         return bestRegion
 
     def trackScaled(self, image, targetScale):
@@ -129,7 +127,6 @@ class MeanShiftTracker(Tracker):
         if h % 2 == 0:
             h -= 1
 
-        print(w, h)
 
         X, Y = np.meshgrid(np.linspace(-int(w/2), int(w/2), int(w)), np.linspace(-int(h/2), int(h/2), int(h)))
 
@@ -141,30 +138,22 @@ class MeanShiftTracker(Tracker):
         if round(x - w/2) <= 0:
             x = int(w/2+1)
         if round(y + h/2) >= image.shape[0] - 1:
-            print("mu")
             y = int(image.shape[0] - h/2 - 1)
         if round(y - h/2) <= 0:
             y = int(h/2+1)
 
-        print(x, y)
 
         for i in range(self.N):
-            print(i)
-
-
             left = max(round(x - float(w) / 2), 0)
             top = max(round(y - float(h) / 2), 0)
 
             right = min(left + w, image.shape[1] - 1)
             bottom = min(top + h, image.shape[0] - 1)
 
-            print(top, left, bottom, right, top + h, image.shape[0])
 
             image_region = image[int(top):int(bottom), int(left):int(right)]
             
-            print(image_region.shape)
-            self.kernel = create_epanechnik_kernel(image_region.shape[1], image_region.shape[0], 1)
-            print(image_region.shape, self.kernel.shape)
+            self.kernel = create_epanechnik_kernel(image_region.shape[1], image_region.shape[0], self.sigma)
             hist = extract_histogram(image_region, self.nbins, self.kernel)
             hist = np.divide(hist, np.sum(hist))
 
@@ -195,5 +184,34 @@ class MeanShiftTracker(Tracker):
 
 class MSParams():
     def __init__(self):
-        self.enlarge_factor = 2
+        self.eps = 1e-5
+        self.nbins = 4
+        self.stop_criterion = 0.01
+        self.N = 20
+        self.alfa = 0
+        self.sigma = 0.5
 
+
+
+if __name__ == "__main__":
+    data = generate_responses_1()
+    
+    import cv2
+    #cv2.imshow('image',data * 255.0)
+    #cv2.waitKey(0)
+
+    Ns = [1000]
+    stops = [1, 0.1, 0.01]
+    sizes = [5, 15, 41]
+    startsX = [25, 50, 75]
+    startsY = [25, 50, 75]
+
+
+    for N in Ns:
+        for stop in stops:
+            for size in sizes:
+                for startX in startsX:
+                    for startY in startsY:
+                        x_k, n_iters = mean_shift_mode_seek(data, N, stop, size, size, startX, startY)
+                        if np.linalg.norm(np.array(x_k) - np.array([70, 50])) < 3:
+                            print(stop, size, "(" + str(startX) + "," + str(startY) + ")", "(" + str(x_k[0]) + "," + str(x_k[1]) + ")", n_iters)

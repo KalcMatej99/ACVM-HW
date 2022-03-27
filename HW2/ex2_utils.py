@@ -12,6 +12,13 @@ def generate_responses_1():
     responses[50, 60] = 0.5
     return gausssmooth(responses, 10)
 
+def generate_responses_2():
+    responses = np.zeros((100, 100), dtype=np.float32)
+    responses[25, 50] = 1
+    responses[50, 50] = 1
+    responses[75, 50] = 1
+    return gausssmooth(responses, 10)
+
 def get_patch(img, center, sz):
     # crop coordinates
     x0 = round(int(center[0] - sz[0] / 2))

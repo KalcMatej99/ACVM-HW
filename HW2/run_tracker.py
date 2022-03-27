@@ -6,69 +6,120 @@ from sequence_utils import VOTSequence
 #from ncc_tracker_example import NCCTracker, NCCParams
 from ex2 import MeanShiftTracker, MSParams
 
+def run(parameters, display = True):
+    # set the path to directory where you have the sequences
+    dataset_path = 'data/vot2014' # TODO: set to the dataet path on your disk
+    sequence = 'fernando'  # choose the sequence you want to test
 
-# set the path to directory where you have the sequences
-dataset_path = 'data/marty' # TODO: set to the dataet path on your disk
-sequence = 'luca'  # choose the sequence you want to test
+    # visualization and setup parameters
+    win_name = 'Tracking window'
+    reinitialize = True
+    show_gt = True
+    video_delay = 15
+    font = cv2.FONT_HERSHEY_PLAIN
 
-# visualization and setup parameters
-win_name = 'Tracking window'
-reinitialize = False
-show_gt = False
-video_delay = 15
-font = cv2.FONT_HERSHEY_PLAIN
+    # create sequence object
+    sequence = VOTSequence(dataset_path, sequence)
+    init_frame = 0
+    n_failures = 0
+    
+    tracker = MeanShiftTracker(parameters)
 
-# create sequence object
-sequence = VOTSequence(dataset_path, sequence)
-init_frame = 0
-n_failures = 0
-# create parameters and tracker objects
-#parameters = NCCParams()
-#tracker = NCCTracker(parameters)
+    time_all = 0
+
+    # initialize visualization window
+    if display:
+        sequence.initialize_window(win_name)
+    # tracking loop - goes over all frames in the video sequence
+    frame_idx = 0
+    while frame_idx < sequence.length():
+        img = cv2.imread(sequence.frame(frame_idx))
+        # initialize or track
+        if frame_idx == init_frame:
+            # initialize tracker (at the beginning of the sequence or after tracking failure)
+            t_ = time.time()
+            tracker.initialize(img, sequence.get_annotation(frame_idx, type='rectangle'))
+            time_all += time.time() - t_
+            predicted_bbox = sequence.get_annotation(frame_idx, type='rectangle')
+        else:
+            # track on current frame - predict bounding box
+            t_ = time.time()
+            predicted_bbox = tracker.track(img)
+            time_all += time.time() - t_
+            
+        # calculate overlap (needed to determine failure of a tracker)
+        gt_bb = sequence.get_annotation(frame_idx, type='rectangle')
+        o = sequence.overlap(predicted_bbox, gt_bb)
+
+        # draw ground-truth and predicted bounding boxes, frame numbers and show image
+        if show_gt:
+            sequence.draw_region(img, gt_bb, (0, 255, 0), 1)
+            
+        if display:
+            sequence.draw_region(img, predicted_bbox, (0, 0, 255), 2)
+            sequence.draw_text(img, '%d/%d' % (frame_idx + 1, sequence.length()), (25, 25))
+            sequence.draw_text(img, 'Fails: %d' % n_failures, (25, 55))
+            sequence.show_image(img, video_delay)
+
+        if o > 0 or not reinitialize:
+            # increase frame counter by 1
+            frame_idx += 1
+        else:
+            # increase frame counter by 5 and set re-initialization to the next frame
+            frame_idx += 5
+            init_frame = frame_idx
+            n_failures += 1
+
+    print('Tracking speed: %.1f FPS' % (sequence.length() / time_all))
+    print('Tracker failed %d times' % n_failures)
+
+    return sequence.length() / time_all, n_failures
+
+class MSParams():
+    def __init__(self):
+        self.eps = 1e-5
+        self.nbins = 16
+        self.stop_criterion = 0.5
+        self.N = 20
+        self.alfa = 0
+        self.sigma = 3
+
 parameters = MSParams()
-tracker = MeanShiftTracker(parameters)
+run(parameters, True)
 
-time_all = 0
 
-# initialize visualization window
-sequence.initialize_window(win_name)
-# tracking loop - goes over all frames in the video sequence
-frame_idx = 0
-while frame_idx < sequence.length():
-    img = cv2.imread(sequence.frame(frame_idx))
-    # initialize or track
-    if frame_idx == init_frame:
-        # initialize tracker (at the beginning of the sequence or after tracking failure)
-        t_ = time.time()
-        tracker.initialize(img, sequence.get_annotation(frame_idx, type='rectangle'))
-        time_all += time.time() - t_
-        predicted_bbox = sequence.get_annotation(frame_idx, type='rectangle')
-    else:
-        # track on current frame - predict bounding box
-        t_ = time.time()
-        predicted_bbox = tracker.track(img)
-        time_all += time.time() - t_
-        
-    # calculate overlap (needed to determine failure of a tracker)
-    gt_bb = sequence.get_annotation(frame_idx, type='rectangle')
-    o = sequence.overlap(predicted_bbox, gt_bb)
+for nbins in [2, 4, 8, 16, 32, 64]:
+    parameters.nbins = nbins
 
-    # draw ground-truth and predicted bounding boxes, frame numbers and show image
-    if show_gt:
-        sequence.draw_region(img, gt_bb, (0, 255, 0), 1)
-    sequence.draw_region(img, predicted_bbox, (0, 0, 255), 2)
-    sequence.draw_text(img, '%d/%d' % (frame_idx + 1, sequence.length()), (25, 25))
-    sequence.draw_text(img, 'Fails: %d' % n_failures, (25, 55))
-    sequence.show_image(img, video_delay)
+    try:
+        fps, fails = run(parameters, False)
+        print(nbins, fps, fails)
+    except:
+        print("Failed")
 
-    if o > 0 or not reinitialize:
-        # increase frame counter by 1
-        frame_idx += 1
-    else:
-        # increase frame counter by 5 and set re-initialization to the next frame
-        frame_idx += 5
-        init_frame = frame_idx
-        n_failures += 1
+parameters = MSParams()
+for alfa in [0, 0.01, 0.1, 0.2, 0.4, 0.5, 0.75, 1]:
+    parameters.alfa = alfa
+    try:
+        fps, fails = run(parameters, False)
+        print(alfa, fps, fails)
+    except:
+        print("Failed")
 
-print('Tracking speed: %.1f FPS' % (sequence.length() / time_all))
-print('Tracker failed %d times' % n_failures)
+parameters = MSParams()
+for sigma in [0.5, 1, 2, 3, 5, 6, 7, 8, 8, 9, 10]:
+    parameters.sigma = sigma
+    try:
+        fps, fails = run(parameters, False)
+        print(sigma, fps, fails)
+    except:
+        print("Failed")
+
+parameters = MSParams()
+for stop_criterion in [0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 1]:
+    parameters.stop_criterion = stop_criterion
+    try:
+        fps, fails = run(parameters, False)
+        print(stop_criterion, fps, fails)
+    except:
+        print("Failed")
