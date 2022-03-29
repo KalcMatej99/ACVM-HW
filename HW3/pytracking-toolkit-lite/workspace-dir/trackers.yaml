@@ -1,0 +1,6 @@
+---
+MESSO:  # use tracker identifier as you want to call your tracker from terminal
+  tracker_path: /home/matej/Documents/FRI/ACVM/ACVM-HW/HW3/pytracking-toolkit-lite/messo/messo.py  # path to the Python script with your tracker
+  class_name: MESSO  # class name of your tracker
+
+...
