@@ -68,7 +68,6 @@ def average_time(times, regions):
     
     return time_sum / valid_frames
 
-from utils.tracker import Tracker
 def load_tracker(workspace_path, tracker_id):
 
     tracker_config = None
