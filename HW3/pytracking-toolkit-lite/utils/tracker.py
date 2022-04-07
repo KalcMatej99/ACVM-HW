@@ -36,6 +36,8 @@ class Tracker(ABC):
 
             results_path = os.path.join(sequence_results_dir, '%s_%03d.txt' % (sequence.name, 1))
             time_path = os.path.join(sequence_results_dir, '%s_%03d_time.txt' % (sequence.name, 1))
+            init_time_path = os.path.join(sequence_results_dir, '%s_%03d_time_init.txt' % (sequence.name, 1))
+            track_time_path = os.path.join(sequence_results_dir, '%s_%03d_time_track.txt' % (sequence.name, 1))
 
             if os.path.exists(results_path):
                 continue
@@ -45,6 +47,8 @@ class Tracker(ABC):
 
             results = sequence.length * [[0]]
             times = sequence.length * [0]
+            init_time = []
+            track_time = []
 
             while frame_index < sequence.length:
 
@@ -55,6 +59,7 @@ class Tracker(ABC):
                     t_ = timer()
                     self.initialize(img, sequence.gt_region(frame_index))
                     times[frame_index] = timer() - t_
+                    init_time.append(timer() - t_)
                     results[frame_index] = [1]
                     frame_index += 1
 
@@ -63,6 +68,7 @@ class Tracker(ABC):
                     t_ = timer()
                     prediction = self.track(img)
                     times[frame_index] = timer() - t_
+                    track_time.append(timer() - t_)
 
                     if len(prediction) != 4:
                         print('Predicted region must be a list representing a bounding box in the format [x0, y0, width, height].')
@@ -78,3 +84,5 @@ class Tracker(ABC):
 
             save_regions(results, results_path)
             save_vector(times, time_path)
+            save_vector(init_time, init_time_path)
+            save_vector(track_time, track_time_path)

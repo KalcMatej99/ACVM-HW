@@ -1,6 +1,6 @@
 import argparse
 import os
-
+import numpy as np
 from utils.utils import load_tracker, load_dataset, trajectory_overlaps, count_failures, average_time
 from utils.io_utils import read_regions, read_vector
 from utils.export_utils import export_measures
@@ -29,12 +29,25 @@ def tracking_analysis(workspace_path, tracker_id):
         if not os.path.exists(time_path):
             print('Time file does not exist (%s).' % time_path)
 
+        init_time_path = os.path.join(workspace_path, 'results', tracker.name(), sequence.name, '%s_%03d_time_init.txt' % (sequence.name, 1))
+        if not os.path.exists(init_time_path):
+            print('Time file does not exist (%s).' % init_time_path)
+
+        track_time_path = os.path.join(workspace_path, 'results', tracker.name(), sequence.name, '%s_%03d_time_track.txt' % (sequence.name, 1))
+        if not os.path.exists(track_time_path):
+            print('Time file does not exist (%s).' % track_time_path)
+
         regions = read_regions(results_path)
         times = read_vector(time_path)
+        init_times = read_vector(init_time_path)
+        track_times = read_vector(track_time_path)
+
 
         overlaps, overlap_valid = trajectory_overlaps(regions, sequence.groundtruth)
         failures = count_failures(regions)
         t = average_time(times, regions)
+
+        print(sequence.name, round(np.average(np.divide(1, init_times)), 0), round(np.average(np.divide(1, track_times)), 0))
 
         per_seq_overlaps[i] = sum(overlaps) / sum(overlap_valid)
         per_seq_failures[i] = failures

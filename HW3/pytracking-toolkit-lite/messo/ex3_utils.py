@@ -21,10 +21,10 @@ def create_gauss_peak(target_size, sigma):
     G = np.roll(G, (-h2, -w2), (0, 1))
     return G
 
-def get_patch(img, topleft, sz):
+def get_patch(img, center, sz):
     # crop coordinates
-    x0 = round(int(topleft[0]))
-    y0 = round(int(topleft[1]))
+    x0 = round(int(center[0] - sz[0] / 2))
+    y0 = round(int(center[1] - sz[1] / 2))
     x1 = int(round(x0 + sz[0]))
     y1 = int(round(y0 + sz[1]))
     # padding

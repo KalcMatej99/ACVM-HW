@@ -15,6 +15,8 @@ def print_summary(output_dict):
     print('  Average overlap: %.2f' % output_dict['average_overlap'])
     print('  Total failures: %.1f' % output_dict['total_failures'])
     print('  Average speed: %.2f FPS' % output_dict['average_speed'])
+    print('  Initial speed: %.2f FPS' % output_dict['initial_speed'])
+    print('  Tracking Average speed: %.2f FPS' % output_dict['tracking_avg_speed'])
     print('------------------------------------')
 
 def load_output(file_path):
@@ -60,11 +62,13 @@ def export_measures(workspace_path: str, dataset: Dataset, tracker: Tracker, ove
     # average measures
     average_overlap = sum(overlaps) / len(dataset.sequences)
     total_failures = sum(failures)
+    initial_speed = speed[0]
+    tracking_avg_speed = sum(speed[1:])/(len(dataset.sequences) - 1)
     average_speed = sum(speed) / len(dataset.sequences)
 
     # final output structure with all information
     output = {'tracker_name': tracker.name(), 'results': results, 'average_overlap': average_overlap, \
-        'total_failures': total_failures, 'average_speed': average_speed, 'total_frames': dataset.number_frames}
+        'total_failures': total_failures, 'average_speed': average_speed, 'initial_speed': initial_speed, 'tracking_avg_speed': tracking_avg_speed, 'total_frames': dataset.number_frames}
 
     # create output directory and save output in json file
     output_dir = os.path.join(workspace_path, 'analysis', tracker.name())

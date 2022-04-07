@@ -6,16 +6,18 @@ import yaml
 from utils.utils import load_tracker, load_dataset
 
 
-def evaluate_tracker(workspace_path, tracker_id):
+def evaluate_tracker(workspace_path, tracker_id, params):
 
     tracker_class = load_tracker(workspace_path, tracker_id)
-    tracker = tracker_class()
+    tracker = tracker_class(params)
 
     dataset = load_dataset(workspace_path)
 
     results_dir = os.path.join(workspace_path, 'results', tracker.name())
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
+    if os.path.exists(results_dir):
+        import shutil
+        shutil.rmtree(results_dir)
+    os.mkdir(results_dir)
 
     tracker.evaluate(dataset, results_dir)
     print('Evaluation has been completed successfully.')
@@ -29,7 +31,7 @@ def main():
 
     args = parser.parse_args()
 
-    evaluate_tracker(args.workspace_path, args.tracker)
+    evaluate_tracker(args.workspace_path, args.tracker, None)
 
 if __name__ == "__main__":
     main()
