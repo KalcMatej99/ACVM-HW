@@ -1,15 +1,13 @@
 import time
-
 import cv2
-
 from sequence_utils import VOTSequence
-#from ncc_tracker_example import NCCTracker, NCCParams
 from particle import ParticleFilter
 
-def run(display = True):
-    # set the path to directory where you have the sequences
-    dataset_path = 'data/vot2014' # TODO: set to the dataet path on your disk
-    sequence = 'fernando'  # choose the sequence you want to test
+def run(display = True, sequence = 'bolt'):
+
+    print("Running sequence:", sequence)
+    
+    dataset_path = 'data/vot2014'
 
     # visualization and setup parameters
     win_name = 'Tracking window'
@@ -38,18 +36,21 @@ def run(display = True):
         if frame_idx == init_frame:
             # initialize tracker (at the beginning of the sequence or after tracking failure)
             t_ = time.time()
-            tracker.initialize(img, sequence.get_annotation(frame_idx, type='rectangle'))
+            particles = tracker.initialize(img, sequence.get_annotation(frame_idx, type='rectangle'))
             time_all += time.time() - t_
             predicted_bbox = sequence.get_annotation(frame_idx, type='rectangle')
         else:
             # track on current frame - predict bounding box
             t_ = time.time()
-            predicted_bbox = tracker.track(img)
+            predicted_bbox, particles = tracker.track(img)
             time_all += time.time() - t_
             
-        # calculate overlap (needed to determine failure of a tracker)
-        gt_bb = sequence.get_annotation(frame_idx, type='rectangle')
-        o = sequence.overlap(predicted_bbox, gt_bb)
+        try:
+            # calculate overlap (needed to determine failure of a tracker)
+            gt_bb = sequence.get_annotation(frame_idx, type='rectangle')
+            o = sequence.overlap(predicted_bbox, gt_bb)
+        except:
+            break
 
         # draw ground-truth and predicted bounding boxes, frame numbers and show image
         if show_gt:
@@ -59,6 +60,11 @@ def run(display = True):
             sequence.draw_region(img, predicted_bbox, (0, 0, 255), 2)
             sequence.draw_text(img, '%d/%d' % (frame_idx + 1, sequence.length()), (25, 25))
             sequence.draw_text(img, 'Fails: %d' % n_failures, (25, 55))
+
+            for particle in particles:
+                sequence.draw_region(img, [particle[0], particle[1], 1,1], (0, 0, 0), 2)
+                #sequence.draw_region(img, [particle[0]-gt_bb[2]/2, particle[1]-gt_bb[3]/2, gt_bb[2],gt_bb[3]], (0, 0, 0), 2)
+
             sequence.show_image(img, video_delay)
 
         if o > 0 or not reinitialize:
@@ -75,13 +81,8 @@ def run(display = True):
 
     return sequence.length() / time_all, n_failures
 
-class MSParams():
-    def __init__(self):
-        self.eps = 1e-5
-        self.nbins = 16
-        self.stop_criterion = 0.5
-        self.N = 20
-        self.alfa = 0
-        self.sigma = 3
-
-run(True)
+run(True, sequence="ball")
+run(False, sequence="bolt")
+run(False, sequence="car")
+run(False, sequence="fernando")
+run(False, sequence="torus")

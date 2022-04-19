@@ -13,6 +13,7 @@ def traj1():
 
     return x, y
 
+
 def traj2():
     N = 40
     v = np.linspace(5 * math.pi, 0, N)
@@ -36,7 +37,8 @@ def traj3():
 
     return np.array(x), np.array(y)
 
-def traj(trajGraph = traj1):
+
+def traj(trajGraph=traj1):
 
     fig, ax = plt.subplots(3, 5, figsize=(10, 10))
 
@@ -53,16 +55,24 @@ def traj(trajGraph = traj1):
             T = 1.0
             if method == "RW":
 
-                #T_ = sp.symbols('T')
-                #F = sp.Matrix([[0, 0], [0, 0]])
+                T_, q_ = sp.symbols('T q')
+                F_ = sp.Matrix([[0, 0], [0, 0]])
+                Fi_ = sp.exp(F_*T_)
+
+                L_ = sp.Matrix([[1, 0], [0, 1]])
+                Q_ = sp.integrate((Fi_*L_)*q_*(Fi_*L_).T, (T_, 0, T_))
 
                 C = np.array([[1, 0],
                               [0, 1]])
-                A = np.array([[1, 0],
-                              [0, 1]])
 
-                Q_i = np.array([[q, 0], [0, q]])
                 R_i = np.array([[r, 0], [0, r]])
+
+                Fi_ = Fi_.subs(T_, T)
+                A = np.array(Fi_, dtype=np.float32)
+                Q_ = Q_.subs(T_, T)
+                Q_ = Q_.subs(q_, q)
+
+                Q_i = np.array(Q_, dtype=np.float32)
 
                 state = np . zeros(
                     (A.shape[0], 1), dtype=np . float32) . flatten()
@@ -71,19 +81,19 @@ def traj(trajGraph = traj1):
 
             elif method == "NCV":
                 C = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
-                A = np.array([[1, T, 0, 0],
-                              [0, 1, 0, 0],
-                              [0, 0, 1, T],
-                              [0, 0, 0, 1]])
 
-                #T, q = sp.symbols('T q')
-                #Fi = sp.Matrix(A)
-                #L = sp.Matrix([[0, 0],[1, 0],[0, 0],[0, 1]])
-                #Q = sp.integrate( (Fi*L)*q*(Fi*L).T, (T, 0, T) )
-                # print(Q)
+                T_, q_ = sp.symbols('T q')
+                F_ = sp.Matrix([[0, 1,0,0], [0, 0,0,0], [0, 0,0,1], [0, 0,0,0]])
+                Fi_ = sp.exp(F_*T_)
+                L = sp.Matrix([[0, 0], [1, 0], [0, 0], [0, 1]])
+                Q_ = sp.integrate((Fi_*L)*q_*(Fi_*L).T, (T_, 0, T_))
 
-                Q_i = np.array([[1.0*T*q, 1.0*T*q, 0, 0], [1.0*T*q, 1.0*T*q, 0, 0],
-                               [0, 0, 1.0*T*q, 1.0*T*q], [0, 0, 1.0*T*q, 1.0*T*q]])
+                Fi_ = Fi_.subs(T_, T)
+                Q_ = Q_.subs(T_, T)
+                Q_ = Q_.subs(q_, q)
+
+                A = np.array(Fi_, dtype=np.float32)
+                Q_i = np.array(Q_, dtype=np.float32)
                 R_i = np.array([[r, 0], [0, r]])
 
                 state = np . zeros(
@@ -98,24 +108,25 @@ def traj(trajGraph = traj1):
                 F = np.array([[0, 1, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0], [
                     0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0]])
 
-                A = np.array([[1, T, T**2/2, 0, 0, 0], [0, 1, T, 0, 0, 0], [0, 0, 1, 0, 0, 0], [
-                             0, 0, 0, 1, T, T**2/2], [0, 0, 0, 0, 1, T], [0, 0, 0, 0, 0, 1]])
-
-                T_ = sp.symbols('T')
-                F_ = sp.Matrix(F)
-                Fi = sp.exp(F_*T_)
-                #print("Fi", Fi)
-
-                C = np.array([[1, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0]])
                 
                 T_, q_ = sp.symbols('T q')
-                Fi_ = sp.Matrix(A)
-                L_ = sp.Matrix([[0, 0],[0, 0],[1, 0],[0, 0],[0, 0],[0, 1]])
-                Q = sp.integrate( (Fi_*L_)*q_*(Fi_*L_).T, (T_, 0, T_) )
-                #print(Q)
+                F_ = sp.Matrix(F)
+                Fi_ = sp.exp(F_*T_)
 
-                Q_i = np.array([[0.25*T*q, 0.5*T*q, 0.5*T*q, 0, 0, 0], [0.5*T*q, 1.0*T*q, 1.0*T*q, 0, 0, 0], [0.5*T*q, 1.0*T*q, 1.0*T*q, 0, 0, 0], [
-                               0, 0, 0, 0.25*T*q, 0.5*T*q, 0.5*T*q], [0, 0, 0, 0.5*T*q, 1.0*T*q, 1.0*T*q], [0, 0, 0, 0.5*T*q, 1.0*T*q, 1.0*T*q]])
+                C = np.array([[1, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0]])
+
+                L = sp.Matrix(
+                    [[0, 0], [0, 0], [1, 0], [0, 0], [0, 0], [0, 1]])
+                Q_ = sp.integrate((Fi_*L)*q_*(Fi_*L).T, (T_, 0, T_))
+
+                Fi_ = Fi_.subs(T_, T)
+                Q_ = Q_.subs(T_, T)
+                Q_ = Q_.subs(q_, q)
+
+                A = np.array(Fi_, dtype=np.float32)
+                Q_i = np.array(Q_, dtype=np.float32)
+
+                
                 R_i = np.array([[r, 0], [0, r]])
                 state = np . zeros(
                     (A.shape[0], 1), dtype=np . float32) . flatten()
@@ -146,4 +157,6 @@ def traj(trajGraph = traj1):
 
 
 if __name__ == "__main__":
-    traj(trajGraph = traj3)
+    traj(trajGraph=traj1)
+    traj(trajGraph=traj2)
+    traj(trajGraph=traj3)

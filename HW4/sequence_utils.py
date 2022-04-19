@@ -42,6 +42,7 @@ class VOTSequence():
             print('Error: Unknown annotation format.')
             exit(-1)
 
+
     def convert_region(self, region, type):
         if (len(region) == 4 and type == 'rectangle') or (len(region) == 8 and type == 'polygon'):
             return region
