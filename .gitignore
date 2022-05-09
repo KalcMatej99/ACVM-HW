@@ -134,3 +134,5 @@ dmypy.json
 .png
 .jepg
 *.jepg
+
+HW5/dataset-lt/*

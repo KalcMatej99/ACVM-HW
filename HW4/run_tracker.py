@@ -3,7 +3,7 @@ import cv2
 from sequence_utils import VOTSequence
 from particle import ParticleFilter
 
-def run(display = True, sequence = 'bolt'):
+def run(display = True, sequence = 'bolt', params = {}):
 
     print("Running sequence:", sequence)
     
@@ -21,7 +21,7 @@ def run(display = True, sequence = 'bolt'):
     init_frame = 0
     n_failures = 0
     
-    tracker = ParticleFilter()
+    tracker = ParticleFilter(params)
 
     time_all = 0
 
@@ -81,8 +81,12 @@ def run(display = True, sequence = 'bolt'):
 
     return sequence.length() / time_all, n_failures
 
-run(True, sequence="ball")
-run(False, sequence="bolt")
-run(False, sequence="car")
-run(False, sequence="fernando")
-run(False, sequence="torus")
+for dyn in ["RW", "NCV", "NCA"]:
+    print(dyn)
+    params = {}
+    params["dynamic_model"] = dyn
+    run(False, sequence="ball", params=params)
+    run(False, sequence="bolt", params=params)
+    run(False, sequence="car", params=params)
+    run(False, sequence="fernando", params=params)
+    run(False, sequence="torus", params=params)
