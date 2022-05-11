@@ -152,7 +152,7 @@ class TrackerSiamFC(Tracker):
         self.kernel = self.net.backbone(z)
     
     @torch.no_grad()
-    def update(self, img):
+    def update(self, img, change_scale = True, change_scale_if_score_value = 0):
         # set to evaluation mode
         self.net.eval()
 
@@ -199,11 +199,12 @@ class TrackerSiamFC(Tracker):
         self.center += disp_in_image
 
         # update target size
-        scale =  (1 - self.cfg.scale_lr) * 1.0 + \
-            self.cfg.scale_lr * self.scale_factors[scale_id]
-        self.target_sz *= scale
-        self.z_sz *= scale
-        self.x_sz *= scale
+        if change_scale and max_resp > change_scale_if_score_value:
+            scale =  (1 - self.cfg.scale_lr) * 1.0 + \
+                self.cfg.scale_lr * self.scale_factors[scale_id]
+            self.target_sz *= scale
+            self.z_sz *= scale
+            self.x_sz *= scale
 
         # return 1-indexed and left-top based bounding box
         box = np.array([

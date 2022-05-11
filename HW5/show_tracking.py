@@ -33,7 +33,8 @@ def visualize_results(dataset_path, results_dir, sequence_name):
         gt_ = sequence.get_annotation(i)
         if not any([math.isnan(el) for el in gt_]):
             sequence.draw_region(img, gt_, (0, 255, 0), 2)
-        sequence.draw_region(img, bboxes[i], (0, 0, 255), 2)
+        if not any([math.isnan(el) for el in bboxes[i]]):
+            sequence.draw_region(img, bboxes[i], (0, 0, 255), 2)
 
         sequence.draw_text(img, '%d/%d' % (i + 1, sequence.length()), (50, 25))
         sequence.draw_text(img, 'Score: %.3f' % scores[i][0], (50, 50))
